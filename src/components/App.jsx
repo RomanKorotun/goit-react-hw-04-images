@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { SearchBar } from './Searchbar/Searchbar';
 import { serviceSearch } from 'api';
@@ -8,38 +8,35 @@ import { Button } from './Button/Button';
 import { Error, Info } from './Message';
 import { Layout } from './Layout';
 
-export class App extends React.Component {
-  state = {
-    page: 1,
-    query: '',
-    galleryItems: [],
-    loading: false,
-    error: false,
-    isEmpty: false,
-    showLoadMode: false,
+export const App = () => {
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState('');
+  const [galleryItems, setGalleryItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [isEmpty, setIsEmpty] = useState(false);
+  const [showLoadMode, setShowLoadMode] = useState(false);
+
+  const handlerSubmit = inputValue => {
+    setQuery(inputValue);
+    setPage(1);
+    setGalleryItems([]);
+    setShowLoadMode(false);
   };
 
-  handlerSubmit = inputValue => {
-    this.setState({
-      query: inputValue,
-      page: 1,
-      galleryItems: [],
-      showLoadMode: false,
-    });
+  const handlerLoadMore = () => {
+    setPage(prevstate => prevstate + 1);
   };
 
-  async componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.query !== this.state.query ||
-      prevState.page !== this.state.page
-    ) {
+  useEffect(() => {
+    if (query === '') {
+      return;
+    }
+    async function search() {
       try {
-        const { page, query } = this.state;
-        this.setState({
-          loading: true,
-          error: false,
-          isEmpty: false,
-        });
+        setLoading(true);
+        setError(false);
+        setIsEmpty(false);
 
         const data = await serviceSearch(page, query);
 
@@ -47,59 +44,46 @@ export class App extends React.Component {
           toast.success(`Hooray! We found ${data.totalHits} images!`);
         }
 
-        if (page >= Math.ceil(data.totalHits / 12)) {
+        if (page >= Math.ceil(data.totalHits / 12) && data.totalHits !== 0) {
           toast("We're sorry, but you've reached the end of search results.");
         }
 
-        if (data.hits.length === 0) {
-          this.setState({
-            isEmpty: true,
-          });
-        }
+        setIsEmpty(() => {
+          if (data.hits.length === 0) {
+            return true;
+          }
+        });
 
-        this.setState(prevState => ({
-          galleryItems: [...prevState.galleryItems, ...data.hits],
-          showLoadMode: page < Math.ceil(data.totalHits / 12),
-        }));
+        setGalleryItems(prevState => [...prevState, ...data.hits]);
+        setShowLoadMode(page < Math.ceil(data.totalHits / 12));
       } catch (error) {
-        this.setState({ error: true });
+        setError(true);
       } finally {
-        this.setState({ loading: false });
+        setLoading(false);
       }
     }
-  }
+    search();
+  }, [page, query]);
 
-  handlerLoadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
-  };
-
-  render() {
-    const { galleryItems, loading, error, isEmpty, showLoadMode } = this.state;
-
-    return (
-      <Layout>
-        <SearchBar onSubmit={this.handlerSubmit} />
-        {error && <Error>Error! Try reloading the page...</Error>}
-        {isEmpty && (
-          <Info>Your search did not match anything. Please try again.</Info>
-        )}
-        {galleryItems.length > 0 && (
-          <ImageGallery galleryItems={galleryItems} />
-        )}
-        {(loading && <Loader />) ||
-          (showLoadMode && <Button onLoadMore={this.handlerLoadMore} />)}
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: {
-              background: '#363636',
-              color: '#fff',
-            },
-          }}
-        />
-      </Layout>
-    );
-  }
-}
+  return (
+    <Layout>
+      <SearchBar onSubmit={handlerSubmit} />
+      {error && <Error>Error! Try reloading the page...</Error>}
+      {isEmpty && (
+        <Info>Your search did not match anything. Please try again.</Info>
+      )}
+      {galleryItems.length > 0 && <ImageGallery galleryItems={galleryItems} />}
+      {(loading && <Loader />) ||
+        (showLoadMode && <Button onLoadMore={handlerLoadMore} />)}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+        }}
+      />
+    </Layout>
+  );
+};
