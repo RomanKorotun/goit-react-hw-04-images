@@ -5,18 +5,14 @@ import { ModalContainer } from 'components/Modal/Modal';
 export const ImageGalleryItem = ({ webformatURL, largeImageURL, tags }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const openModal = () => {
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
+  const toggleModal = () => {
+    setIsModalOpen(prevState => !prevState);
   };
 
   return (
     <PhotoCard>
       <img
-        onClick={openModal}
+        onClick={toggleModal}
         src={webformatURL}
         alt={tags}
         loading="lazy"
@@ -26,7 +22,7 @@ export const ImageGalleryItem = ({ webformatURL, largeImageURL, tags }) => {
       <ModalContainer
         largeImageURL={largeImageURL}
         isModalOpen={isModalOpen}
-        onCloseModal={closeModal}
+        onCloseModal={toggleModal}
         tags={tags}
       />
     </PhotoCard>
